@@ -1,0 +1,653 @@
+openapi: 3.0.3
+info:
+  title: TasteBox API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Servidor local
+tags:
+  - name: Usuarios
+  - name: Suscripciones
+  - name: Recetas
+  - name: Reseñas
+  - name: Recetas guardadas
+
+paths:
+  /users/login:
+    post:
+      tags: [Usuarios]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Inicio de sesión exitoso
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Credenciales inválidas }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      responses:
+        '200':
+          description: Lista de usuarios (sin contraseña)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Usuarios]
+      summary: Crear usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserCreate' }
+      responses:
+        '201':
+          description: Usuario creado (nunca devuelve password)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+          description: Validación fallida o suscripción inexistente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: La suscripción indicada no existe }
+        '409':
+          description: Email duplicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: El email ya está registrado }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Usuarios]
+      summary: Obtener usuario por id
+      responses:
+        '200':
+          description: Usuario encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Usuarios]
+      summary: Actualizar usuario
+      description: Si no se envían `password` o `role`, se conservan los actuales.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdate' }
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+          description: Validación fallida, id inválido o suscripción inexistente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: id inválido }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: El email lo usa otro usuario
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: El email ya está registrado }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Usuarios]
+      summary: Eliminar usuario
+      responses:
+        '204': { description: 'Eliminado, sin contenido' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Tiene reseñas o recetas guardadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: 'No se puede eliminar: el usuario tiene reseñas o recetas guardadas' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /subscriptions:
+    get:
+      tags: [Suscripciones]
+      summary: Listar suscripciones
+      responses:
+        '200':
+          description: Lista de suscripciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Subscription' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Suscripciones]
+      summary: Crear suscripción
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionInput' }
+      responses:
+        '201':
+          description: Suscripción creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '400':
+          description: Validación fallida
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: name es obligatorio (máx. 45 caracteres) }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /subscriptions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Suscripciones]
+      summary: Obtener suscripción por id
+      responses:
+        '200':
+          description: Suscripción encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Suscripciones]
+      summary: Actualizar suscripción
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionInput' }
+      responses:
+        '200':
+          description: Suscripción actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '400':
+          description: Validación fallida o id inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: name es obligatorio (máx. 45 caracteres) }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Suscripciones]
+      summary: Eliminar suscripción
+      responses:
+        '204': { description: 'Eliminada, sin contenido' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Hay usuarios con esta suscripción
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: 'No se puede eliminar: hay usuarios con esta suscripción' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /recipes:
+    get:
+      tags: [Recetas]
+      summary: Listar recetas
+      responses:
+        '200':
+          description: Lista de recetas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Recipe' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Recetas]
+      summary: Crear receta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeInput' }
+      responses:
+        '201':
+          description: Receta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recipe' }
+        '400':
+          description: Validación fallida
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: difficulty_level es obligatorio y debe ser un entero entre 1 y 5 }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /recipes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Recetas]
+      summary: Obtener receta por id
+      responses:
+        '200':
+          description: Receta encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recipe' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Recetas]
+      summary: Reemplazar receta
+      description: Reemplazo completo. Si se omite `preparation_date`, se guarda la fecha y hora actual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecipeInput' }
+      responses:
+        '200':
+          description: Receta actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recipe' }
+        '400':
+          description: Validación fallida o id inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: id inválido }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Recetas]
+      summary: Eliminar receta
+      responses:
+        '204': { description: 'Eliminada, sin contenido' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: La receta tiene reseñas o está guardada por usuarios
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: 'No se puede eliminar: la receta tiene reseñas o está guardada por usuarios' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reviews:
+    get:
+      tags: [Reseñas]
+      summary: Listar reseñas (con email del usuario y nombre de la receta)
+      responses:
+        '200':
+          description: Lista de reseñas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReviewDetail' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Reseñas]
+      summary: Crear reseña
+      description: Una fecha con formato válido pero inexistente (p. ej. 2024-02-30) la rechaza MySQL y devuelve 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewInput' }
+      responses:
+        '201':
+          description: Reseña creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Review' }
+        '400':
+          description: Validación fallida o usuario/receta inexistentes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: El usuario o la receta indicados no existen }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reviews/recipe/{recipeId}:
+    get:
+      tags: [Reseñas]
+      summary: Listar reseñas de una receta
+      description: Devuelve arreglo vacío si no hay reseñas; no valida que la receta exista.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Reseñas de la receta
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Review' }
+        '400':
+          description: recipeId inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: recipeId inválido }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reviews/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Reseñas]
+      summary: Obtener reseña por id
+      responses:
+        '200':
+          description: Reseña encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Review' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Reseñas]
+      summary: Reemplazar reseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewInput' }
+      responses:
+        '200':
+          description: Reseña actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Review' }
+        '400':
+          description: Validación fallida, id inválido o usuario/receta inexistentes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: El usuario o la receta indicados no existen }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Reseñas]
+      summary: Eliminar reseña
+      responses:
+        '204': { description: 'Eliminada, sin contenido' }
+        '400': { $ref: '#/components/responses/InvalidId' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /saved-recipes:
+    get:
+      tags: [Recetas guardadas]
+      summary: Listar todas las recetas guardadas
+      responses:
+        '200':
+          description: Lista de recetas guardadas con nombre de receta y email de usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SavedRecipeDetail' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Recetas guardadas]
+      summary: Guardar una receta para un usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SavedRecipe' }
+      responses:
+        '201':
+          description: Receta guardada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedRecipe' }
+        '400':
+          description: Datos inválidos o usuario/receta inexistentes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: recipe_id_recipe y user_id_user son obligatorios y deben ser enteros }
+        '409':
+          description: Ya estaba guardada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: El usuario ya guardó esta receta }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /saved-recipes/user/{userId}:
+    get:
+      tags: [Recetas guardadas]
+      summary: Recetas guardadas por un usuario
+      description: Devuelve arreglo vacío si no hay; no valida que el usuario exista.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Recetas completas guardadas por el usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Recipe' }
+        '400':
+          description: userId inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: userId inválido }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /saved-recipes/{recipeId}/{userId}:
+    delete:
+      tags: [Recetas guardadas]
+      summary: Quitar una receta guardada
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: 'Eliminada, sin contenido' }
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: recipeId y userId inválidos }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+  responses:
+    BadRequest:
+      description: Datos obligatorios faltantes
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: email y password son obligatorios }
+    InvalidId:
+      description: id inválido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: id inválido }
+    NotFound:
+      description: No encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: No encontrado }
+    ServerError:
+      description: Error de base de datos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: mensaje del error de base de datos }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    Subscription:
+      type: object
+      properties:
+        id_subscription: { type: integer, example: 1 }
+        name: { type: string, example: Gratuito }
+    SubscriptionInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 45, example: Premium }
+    User:
+      type: object
+      properties:
+        id_user: { type: integer, example: 1 }
+        email: { type: string, format: email, example: ana@correo.com }
+        role: { type: integer, enum: [0, 1], example: 0 }
+        subscription_id_subscription: { type: integer, example: 1 }
+    UserCreate:
+      type: object
+      required: [email, password, subscription_id_subscription]
+      properties:
+        email: { type: string, format: email, maxLength: 45 }
+        password: { type: string, minLength: 6, maxLength: 72 }
+        role: { type: integer, enum: [0, 1], default: 0 }
+        subscription_id_subscription: { type: integer, description: Debe existir }
+    UserUpdate:
+      type: object
+      required: [email, subscription_id_subscription]
+      properties:
+        email: { type: string, format: email, maxLength: 45 }
+        password: { type: string, minLength: 6, maxLength: 72 }
+        role: { type: integer, enum: [0, 1] }
+        subscription_id_subscription: { type: integer }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, example: ana@correo.com }
+        password: { type: string, example: secreto123 }
+    LoginResponse:
+      type: object
+      properties:
+        message: { type: string, example: Inicio de sesión exitoso }
+        user: { $ref: '#/components/schemas/User' }
+    Recipe:
+      type: object
+      properties:
+        id_recipe: { type: integer }
+        name: { type: string }
+        difficulty_level: { type: integer, minimum: 1, maximum: 5 }
+        cuisine_type: { type: string }
+        description: { type: string }
+        preparation_date: { type: string, format: date-time }
+    RecipeInput:
+      type: object
+      required: [name, difficulty_level, cuisine_type, description]
+      properties:
+        name: { type: string, maxLength: 45, example: Arepas }
+        difficulty_level: { type: integer, minimum: 1, maximum: 5, example: 2 }
+        cuisine_type: { type: string, maxLength: 45, example: Colombiana }
+        description: { type: string, maxLength: 255 }
+        preparation_date: { type: string, format: date-time, description: Opcional; por defecto la fecha y hora actual }
+    Review:
+      type: object
+      properties:
+        id_review: { type: integer }
+        date: { type: string, format: date }
+        tags: { type: string, nullable: true }
+        comments: { type: string, nullable: true }
+        cook_it_again: { type: integer, enum: [0, 1] }
+        user_id_user: { type: integer }
+        recipe_id_recipe: { type: integer }
+    ReviewDetail:
+      allOf:
+        - $ref: '#/components/schemas/Review'
+        - type: object
+          properties:
+            user_email: { type: string }
+            recipe_name: { type: string }
+    ReviewInput:
+      type: object
+      required: [date, cook_it_again, user_id_user, recipe_id_recipe]
+      properties:
+        date: { type: string, format: date, example: '2026-10-10' }
+        tags: { type: string, maxLength: 45 }
+        comments: { type: string, maxLength: 255 }
+        cook_it_again: { type: integer, enum: [0, 1] }
+        user_id_user: { type: integer, description: Debe existir }
+        recipe_id_recipe: { type: integer, description: Debe existir }
+    SavedRecipe:
+      type: object
+      required: [recipe_id_recipe, user_id_user]
+      properties:
+        recipe_id_recipe: { type: integer }
+        user_id_user: { type: integer }
+    SavedRecipeDetail:
+      allOf:
+        - $ref: '#/components/schemas/SavedRecipe'
+        - type: object
+          properties:
+            recipe_name: { type: string }
+            user_email: { type: string }
